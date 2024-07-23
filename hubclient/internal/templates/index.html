@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HubClient</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+        }
+
+        h1 {
+            font-size: 2em;
+            margin-bottom: 20px;
+        }
+
+        .message-container {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .connect-container,
+        .send-container {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .send-container input[type="text"] {
+            flex: 1;
+            padding: 10px;
+            font-size: 1em;
+        }
+
+        .send-container button,
+        .connect-container button {
+            padding: 10px 20px;
+            font-size: 1em;
+            cursor: pointer;
+        }
+
+        .messages-container {
+            display: flex;
+            gap: 20px;
+            margin-top: 20px;
+        }
+
+        .messages {
+            max-height: 300px;
+            overflow-y: auto;
+            border: 1px solid #ccc;
+            padding: 10px;
+            flex: 1;
+        }
+
+        .message {
+            margin-bottom: 10px;
+        }
+
+        .sent-messages {
+            border-color: purple;
+        }
+
+        .received-messages {
+            border-color: pink;
+        }
+
+        .status {
+            font-weight: bold;
+        }
+
+        .status.connected {
+            color: green;
+        }
+
+        .status.disconnected {
+            color: red;
+        }
+    </style>
+</head>
+<body>
+<h1>HubClient</h1>
+<div class="message-container">
+    <div class="connect-container">
+        <button id="connectBtn">Connect</button>
+        <span id="status" class="status disconnected">Disconnected</span>
+    </div>
+    <div class="send-container">
+        <input type="text" id="messageInput" placeholder="Enter your message">
+        <button id="sendBtn">Send</button>
+    </div>
+    <div class="messages-container">
+        <div class="messages sent-messages">
+            <h2>Sent Messages</h2>
+            <div id="sentMessages">
+                <!-- Sent messages will be appended here -->
+            </div>
+        </div>
+        <div class="messages received-messages">
+            <h2>Received Messages</h2>
+            <div id="receivedMessages">
+                <!-- Received messages will be appended here -->
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    const connectBtn = document.getElementById('connectBtn');
+    const status = document.getElementById('status');
+    const messageInput = document.getElementById('messageInput');
+    const sendBtn = document.getElementById('sendBtn');
+    const sentMessages = document.getElementById('sentMessages');
+    const receivedMessages = document.getElementById('receivedMessages');
+    let socket;
+
+    connectBtn.addEventListener('click', connect);
+
+    sendBtn.addEventListener('click', () => {
+        if (socket && socket.readyState === WebSocket.OPEN) {
+            const message = messageInput.value;
+            socket.send(message);
+            const sentMessage = document.createElement('div');
+            sentMessage.className = 'message';
+            sentMessage.textContent = message;
+            sentMessages.append(sentMessage);
+            messageInput.value = '';
+        }
+    });
+
+    function connect() {
+        const hubAddr = "{{ .hubAddr }}";
+        const wsUrl = `ws://${hubAddr}/ws`;
+
+        socket = new WebSocket(wsUrl);
+
+        socket.addEventListener('open', () => {
+            status.textContent = 'Connected';
+            status.className = 'status connected';
+        });
+
+        socket.addEventListener('message', (event) => {
+            const message = document.createElement('div');
+            message.className = 'message';
+            message.textContent = event.data;
+            receivedMessages.append(message);
+        });
+
+        socket.addEventListener('close', () => {
+            status.textContent = 'Disconnected';
+            status.className = 'status disconnected';
+        });
+
+        socket.addEventListener('error', (error) => {
+            console.error('WebSocket error:', error);
+        });
+    }
+</script>
+</body>
+</html>

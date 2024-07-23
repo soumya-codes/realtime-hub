@@ -1,0 +1,2 @@
+user redis on >password +@all -CONFIG ~* &* >password
+user default off resetchannels -@all

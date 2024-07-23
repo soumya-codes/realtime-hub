@@ -1,0 +1,14 @@
+**/vendor
+**/node_modules
+**/.git
+**/.idea
+**/.vscode
+**/tmp
+**/test
+**/dist
+**/*.md
+hubclient/docker/Dockerfile
+**/docker-compose.yml
+**/Makefile
+**/go.work
+**/go.work.sum

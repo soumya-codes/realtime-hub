@@ -1,0 +1,109 @@
+version: '3.8'
+
+services:
+  redis:
+    image: cgr.dev/chainguard/redis:latest
+    container_name: redis
+    #profiles: [no-server]
+    command:
+      - "--maxmemory 256mb"
+      - "--maxmemory-policy allkeys-lru"
+      - "--timeout 300"
+      - "--tcp-keepalive 10"
+      - "--aclfile /usr/local/etc/redis/redis.acl"
+    volumes:
+      - ../hubserver/config/redis/redis.acl:/usr/local/etc/redis/redis.acl
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli -h 127.0.0.1 --user redis -a password PING | grep 'PONG' || exit 1"]
+      interval: 5s
+      retries: 5
+      start_period: 3s
+      timeout: 5s
+    networks:
+      - realtime-hub-network
+
+  hubserver1:
+    image: hubserver:latest
+    container_name: hubserver1
+    command: ["./hubserver", "--port", "8080", "--pub-sub-host", "redis:6379", "--pub-sub-channel", "hub-messages", "--hub-name", "hub1"]
+    depends_on:
+      redis:
+        condition: service_healthy
+    ports:
+      - "8080:8080"
+    environment:
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8080/health || exit 1"]
+      interval: 5s
+      retries: 5
+      start_period: 3s
+      timeout: 5s
+    networks:
+      - realtime-hub-network
+
+  hubserver2:
+    image: hubserver:latest
+    container_name: hubserver2
+    command: ["./hubserver", "--port", "8081", "--pub-sub-host", "redis:6379", "--pub-sub-channel", "hub-messages", "--hub-name", "hub2"]
+    depends_on:
+      redis:
+        condition: service_healthy
+    ports:
+      - "8081:8081"
+    environment:
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8081/health || exit 1"]
+      interval: 5s
+      retries: 5
+      start_period: 3s
+      timeout: 5s
+    networks:
+      - realtime-hub-network
+
+  hubclient1:
+    image: hubclient:latest
+    container_name: hubclient1
+    #profiles: [no-server]
+    command: ["./hubclient", "--port", "9081", "--hub-addr", "localhost:8080"]
+    ports:
+      - "9081:9081"
+    depends_on:
+      hubserver1:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:9081/health || exit 1"]
+      interval: 5s
+      retries: 5
+      start_period: 3s
+      timeout: 5s
+    networks:
+      - realtime-hub-network
+
+  hubclient2:
+    image: hubclient:latest
+    container_name: hubclient2
+    #profiles: [no-server]
+    command: ["./hubclient", "--port", "9082", "--hub-addr", "localhost:8081"]
+    ports:
+      - "9082:9082"
+    depends_on:
+      hubserver2:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:9082/health || exit 1"]
+      interval: 5s
+      retries: 5
+      start_period: 3s
+      timeout: 5s
+    networks:
+      - realtime-hub-network
+
+networks:
+  realtime-hub-network:
+    driver: bridge
